@@ -58,6 +58,9 @@ dependencies {
 kotlin { compilerOptions { freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property") } }
 
 tasks.withType<Test> {
+    // Docker Engine 29+ 는 API < 1.44 요청을 400으로 거절한다 → docker-java(Testcontainers)에 최소 버전을 알려준다
+    environment("DOCKER_API_VERSION", System.getenv("DOCKER_API_VERSION") ?: "1.44")
+    systemProperty("api.version", System.getenv("DOCKER_API_VERSION") ?: "1.44")
     useJUnitPlatform {
         if (project.hasProperty("excludeTags")) excludeTags(project.property("excludeTags").toString())
     }

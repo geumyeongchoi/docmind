@@ -8,6 +8,11 @@ spring:
     enabled: true
     locations: classpath:db/migration
   ai:
+    model:                            # 사용하지 않는 OpenAI 부가 모델 자동구성 비활성(키 없이도 기동)
+      audio.speech: none
+      audio.transcription: none
+      image: none
+      moderation: none
     vectorstore:
       pgvector:
         initialize-schema: false        # 스키마는 Flyway가 관리(tsvector 생성 컬럼 포함) — ADR 데이터 설계 §9
