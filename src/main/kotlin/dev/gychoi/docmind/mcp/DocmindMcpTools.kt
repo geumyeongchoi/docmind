@@ -8,6 +8,7 @@ import org.springframework.ai.tool.annotation.ToolParam
 import org.springframework.ai.tool.method.MethodToolCallbackProvider
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Component
 
 data class SearchHit(
@@ -29,7 +30,9 @@ data class AskResult(
  */
 @Component
 class DocmindMcpTools(
-    private val ask: AskQuestionUseCase,
+    // ToolCallbackProvider 빈은 ChatModel 의 toolCallbackResolver 에도 수집되므로, 즉시 주입하면
+    // tools → useCase → chatClient → chatModel → resolver → tools 순환이 생긴다. @Lazy 프록시로 끊는다.
+    @Lazy private val ask: AskQuestionUseCase,
 ) {
     @Tool(name = "search_docs", description = "사내 문서에서 질의와 관련된 청크를 검색합니다. 근거를 직접 확인하고 싶을 때 사용합니다.")
     fun searchDocs(

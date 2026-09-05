@@ -70,6 +70,8 @@ tasks.withType<Test> {
     }
 }
 
+springBoot { mainClass.set("dev.gychoi.docmind.DocmindApplicationKt") } // EvalRunnerKt 도 main 을 가지므로 명시
+
 ktlint {
     version.set("1.7.1")
     filter { exclude("**/generated/**") }

@@ -76,7 +76,7 @@ spring:
       base-url: ${OLLAMA_URL:http://localhost:11434}
       init:
         pull-model-strategy: never
-      chat.options.model: ${OLLAMA_CHAT_MODEL:qwen3:8b}
+      chat.options.model: ${OLLAMA_CHAT_MODEL:gemma3:4b}   # qwen3 는 thinking 기본 → 응답 100초+ (README §5)
       embedding.options.model: ${OLLAMA_EMBED_MODEL:bge-m3}
     vectorstore.pgvector:
       table-name: docmind_private
