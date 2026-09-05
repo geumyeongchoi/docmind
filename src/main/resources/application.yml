@@ -1,0 +1,109 @@
+spring:
+  application.name: docmind
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/docmind}
+    username: ${DB_USER:docmind}
+    password: ${DB_PASSWORD:docmind}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  ai:
+    vectorstore:
+      pgvector:
+        initialize-schema: false        # 스키마는 Flyway가 관리(tsvector 생성 컬럼 포함) — ADR 데이터 설계 §9
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        schema-validation: true
+  servlet.multipart:
+    max-file-size: 50MB
+    max-request-size: 200MB
+  task.execution.pool:
+    core-size: 2
+    max-size: 2
+    queue-capacity: 100
+  ai.mcp.server:
+    enabled: true
+    name: docmind
+    version: 0.1.0
+    type: SYNC
+    sse-endpoint: /sse
+    sse-message-endpoint: /mcp/message
+    capabilities:
+      tool: true
+
+docmind:
+  ingest:
+    chunk-size-tokens: 600            # 평가 축: 300 / 600 / 1000
+    chunk-overlap-tokens: 80
+    embedding-batch-size: 32
+  retrieval:
+    top-k: 6
+    similarity-threshold: 0.35
+    hybrid: true                      # false면 벡터 단독(평가 비교용)
+    rrf-k: 60
+  chat:
+    max-memory-messages: 20           # 10턴 = 20 메시지
+  safeguard:
+    sensitive-phrases:
+      - "ignore previous instructions"
+      - "ignore all previous instructions"
+      - "이전 지시를 무시"
+      - "이전 지시는 무시"
+      - "시스템 프롬프트를 출력"
+
+management:
+  endpoints.web.exposure.include: health,info,prometheus,metrics
+  endpoint.health.probes.enabled: true
+
+logging.level:
+  dev.gychoi.docmind: INFO
+  org.springframework.ai: INFO
+
+---
+# 사내망: 데이터가 서버 밖으로 나가지 않음
+spring:
+  config.activate.on-profile: private
+  ai:
+    model:
+      chat: ollama
+      embedding: ollama
+    ollama:
+      base-url: ${OLLAMA_URL:http://localhost:11434}
+      init:
+        pull-model-strategy: never
+      chat.options.model: ${OLLAMA_CHAT_MODEL:qwen3:8b}
+      embedding.options.model: ${OLLAMA_EMBED_MODEL:bge-m3}
+    vectorstore.pgvector:
+      table-name: docmind_private
+      dimensions: 1024                # bge-m3
+docmind.profile-label: private
+
+---
+# 공개: 최신 상용 모델
+spring:
+  config.activate.on-profile: public
+  ai:
+    model:
+      chat: openai
+      embedding: openai
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat.options.model: ${OPENAI_CHAT_MODEL:gpt-4.1-mini}
+      embedding.options.model: ${OPENAI_EMBED_MODEL:text-embedding-3-small}
+    vectorstore.pgvector:
+      table-name: docmind_public
+      dimensions: 1536                # text-embedding-3-small
+docmind.profile-label: public
+
+---
+# 테스트: 모델 자동구성 끄고 가짜 모델 빈 사용(test 소스의 FakeAiConfig)
+spring:
+  config.activate.on-profile: test
+  ai:
+    model:
+      chat: none
+      embedding: none
+    vectorstore.pgvector:
+      table-name: docmind_public
+      dimensions: 1536
+docmind.profile-label: test

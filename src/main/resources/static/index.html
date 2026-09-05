@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>docmind</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --line:#e3e6ea; --text:#1d2430; --muted:#6b7480; --accent:#2f5fd0; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:14px 20px; background:var(--card); border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:center; }
+  header h1 { margin:0; font-size:18px; } header small { color:var(--muted); }
+  main { display:grid; grid-template-columns: 300px 1fr 320px; gap:16px; padding:16px 20px; height:calc(100vh - 56px); }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; display:flex; flex-direction:column; min-height:0; }
+  section h2 { font-size:13px; margin:0; padding:12px 14px; border-bottom:1px solid var(--line); color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .body { padding:12px 14px; overflow:auto; flex:1; }
+  .doc { padding:8px 0; border-bottom:1px dashed var(--line); font-size:13px; }
+  .doc .st { font-size:11px; padding:1px 6px; border-radius:10px; background:#eef2ff; color:var(--accent); margin-left:6px; }
+  .doc .st.DONE { background:#e7f6ec; color:#1e7a3a; } .doc .st.FAILED, .doc .st.DUPLICATE { background:#fdecea; color:#b3261e; }
+  .msg { margin:8px 0; padding:10px 12px; border-radius:10px; white-space:pre-wrap; max-width:90%; }
+  .msg.user { background:#eef2ff; margin-left:auto; } .msg.bot { background:#f1f3f5; }
+  .cite { font-size:12px; padding:8px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; }
+  .cite b { display:block; } .cite .sc { color:var(--muted); }
+  form.ask { display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--line); }
+  input[type=text] { flex:1; padding:10px 12px; border:1px solid var(--line); border-radius:8px; font:inherit; }
+  button { padding:10px 14px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  .meta { font-size:11px; color:var(--muted); margin-top:4px; }
+  input[type=file] { font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>docmind</h1>
+  <small id="health">…</small>
+</header>
+<main>
+  <section>
+    <h2>문서</h2>
+    <div class="body">
+      <form id="up"><input type="file" name="files" multiple accept=".pdf,.docx,.md,.txt"> <button type="submit">업로드</button></form>
+      <div id="docs"></div>
+    </div>
+  </section>
+  <section>
+    <h2>채팅</h2>
+    <div class="body" id="chat"></div>
+    <form class="ask" id="ask"><input type="text" id="q" placeholder="문서에 대해 질문하세요" autocomplete="off"><button id="send">질문</button></form>
+  </section>
+  <section>
+    <h2>출처</h2>
+    <div class="body" id="cites"></div>
+  </section>
+</main>
+<script>
+const sessionId = 'web-' + Math.random().toString(36).slice(2);
+const $ = (s) => document.querySelector(s);
+
+async function loadHealth() {
+  try { const h = await (await fetch('/api/health/ai')).json();
+    $('#health').textContent = `${h.profile} · ${h.chatModel ?? '?'} · ${h.vectorRows} chunks · hybrid=${h.hybrid}`; } catch { $('#health').textContent = 'offline'; }
+}
+async function loadDocs() {
+  const list = await (await fetch('/api/documents')).json();
+  $('#docs').innerHTML = list.map(d => `<div class="doc">${d.filename}<span class="st ${d.status}">${d.status}</span>
+    <div class="meta">${d.chunkCount} chunks${d.elapsedMs ? ' · ' + d.elapsedMs + 'ms' : ''}${d.error ? ' · ' + d.error : ''}</div></div>`).join('');
+  if (list.some(d => d.status === 'QUEUED' || d.status === 'PROCESSING')) setTimeout(loadDocs, 1500);
+}
+$('#up').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  if (!fd.getAll('files').length || !fd.getAll('files')[0].name) return;
+  await fetch('/api/documents', { method: 'POST', body: fd });
+  e.target.reset(); loadDocs();
+});
+
+function addMsg(cls, text) { const el = document.createElement('div'); el.className = 'msg ' + cls; el.textContent = text; $('#chat').appendChild(el); $('#chat').scrollTop = 1e9; return el; }
+
+$('#ask').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const q = $('#q').value.trim(); if (!q) return;
+  $('#q').value = ''; $('#send').disabled = true;
+  addMsg('user', q);
+  const bot = addMsg('bot', '');
+  $('#cites').innerHTML = '';
+  const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, question: q }) });
+  const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '', ev = '';
+  while (true) {
+    const { value, done } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i; while ((i = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, i).trimEnd(); buf = buf.slice(i + 1);
+      if (line.startsWith('event:')) ev = line.slice(6).trim();
+      else if (line.startsWith('data:')) {
+        const data = JSON.parse(line.slice(5).trim());
+        if (ev === 'token') bot.textContent += data.text;
+        else if (ev === 'citations') $('#cites').innerHTML = data.length ? data.map(c => `<div class="cite"><b>${c.filename}${c.page ? ' p.' + c.page : ''}</b><span class="sc">score ${c.score?.toFixed(3) ?? '-'}</span><div>${c.snippet}</div></div>`).join('') : '<div class="meta">근거 없음</div>';
+        else if (ev === 'done') { const m = document.createElement('div'); m.className = 'meta'; m.textContent = `${data.profile} · ${data.model ?? ''} · ${data.elapsedMs}ms${data.promptTokens ? ' · ' + data.promptTokens + '/' + data.completionTokens + ' tok' : ''}`; bot.appendChild(m); }
+        else if (ev === 'error') bot.textContent += '\n[오류] ' + data.message;
+      }
+    }
+  }
+  $('#send').disabled = false; loadHealth();
+});
+loadHealth(); loadDocs();
+</script>
+</body>
+</html>

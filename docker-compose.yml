@@ -1,0 +1,24 @@
+services:
+  pgvector:
+    image: pgvector/pgvector:pg17
+    container_name: docmind-pg
+    environment:
+      POSTGRES_DB: docmind
+      POSTGRES_USER: docmind
+      POSTGRES_PASSWORD: docmind
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docmind"]
+      interval: 5s
+
+  # private 모드용. Mac에서는 네이티브 Ollama(brew install ollama)가 훨씬 빠르므로 이 컨테이너는 Linux 서버 전용.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["private"]
+    ports: ["11434:11434"]
+    volumes: ["ollama:/root/.ollama"]
+
+volumes:
+  pgdata:
+  ollama:

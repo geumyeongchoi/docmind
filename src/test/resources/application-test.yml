@@ -1,0 +1,17 @@
+spring:
+  ai:
+    model:
+      chat: none
+      embedding: none
+    vectorstore.pgvector:
+      table-name: docmind_public
+      dimensions: 1536
+      initialize-schema: false
+docmind:
+  profile-label: test
+  ingest:
+    chunk-size-tokens: 120
+    chunk-overlap-tokens: 20
+  retrieval:
+    similarity-threshold: 0.05
+logging.level.dev.gychoi.docmind: DEBUG
