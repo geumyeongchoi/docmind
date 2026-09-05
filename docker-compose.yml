@@ -6,7 +6,7 @@ services:
       POSTGRES_DB: docmind
       POSTGRES_USER: docmind
       POSTGRES_PASSWORD: docmind
-    ports: ["5432:5432"]
+    ports: ["55432:5432"]   # 로컬 55432 → 사내 DB(5432)와 충돌 방지
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U docmind"]
