@@ -83,6 +83,7 @@ tasks.register<JavaExec>("eval") {
     description = "RAG 평가셋(eval/golden.yaml) 실행 → build/eval/report.md"
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("dev.gychoi.docmind.eval.EvalRunnerKt")
+    javaLauncher.set(javaToolchains.launcherFor(java.toolchain)) // 컴파일 toolchain(21)과 동일 JDK로 실행
     args(
         project.findProperty("eval.baseUrl")?.toString() ?: "http://localhost:8080",
         "eval/golden.yaml",
