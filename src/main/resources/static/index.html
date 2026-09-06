@@ -65,10 +65,12 @@ async function loadHealth() {
     $('#health').textContent = `${h.profile} · ${h.chatModel ?? '?'} · ${h.vectorRows} chunks · hybrid=${h.hybrid}`; } catch { $('#health').textContent = 'offline'; }
 }
 async function loadDocs() {
-  const list = await (await fetch('/api/documents')).json();
-  $('#docs').innerHTML = list.map(d => `<div class="doc">${d.filename}<span class="st ${d.status}">${d.status}</span>
+  const all = await (await fetch('/api/documents')).json();
+  const list = all.filter(d => d.status !== 'DUPLICATE'); // 같은 파일 재업로드 기록은 목록에서 숨김(원본에 합쳐짐)
+  const dup = all.length - list.length;
+  $('#docs').innerHTML = (dup ? `<div class="meta">중복 업로드 ${dup}건 숨김</div>` : '') + list.map(d => `<div class="doc">${d.filename}<span class="st ${d.status}">${d.status}</span>
     <div class="meta">${d.chunkCount} chunks${d.elapsedMs ? ' · ' + d.elapsedMs + 'ms' : ''}${d.error ? ' · ' + d.error : ''}</div></div>`).join('');
-  if (list.some(d => d.status === 'QUEUED' || d.status === 'PROCESSING')) setTimeout(loadDocs, 1500);
+  if (all.some(d => d.status === 'QUEUED' || d.status === 'PROCESSING')) setTimeout(loadDocs, 1500);
 }
 $('#up').addEventListener('submit', async (e) => {
   e.preventDefault();
