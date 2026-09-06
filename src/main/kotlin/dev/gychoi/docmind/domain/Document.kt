@@ -68,15 +68,18 @@ data class Chunk(
     val score: Double?,
 )
 
+/** 출처. documentId + chunkIndex(+page)로 뷰어가 원문의 해당 위치로 이동한다. */
 data class Citation(
     val documentId: UUID?,
     val filename: String,
     val page: Int?,
+    val chunkIndex: Int?,
     val score: Double?,
     val snippet: String,
 ) {
     companion object {
-        fun from(chunk: Chunk) = Citation(chunk.documentId, chunk.filename, chunk.page, chunk.score, chunk.content.take(160))
+        fun from(chunk: Chunk) =
+            Citation(chunk.documentId, chunk.filename, chunk.page, chunk.chunkIndex, chunk.score, chunk.content.take(160))
     }
 }
 

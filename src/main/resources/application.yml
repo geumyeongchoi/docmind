@@ -64,6 +64,14 @@ logging.level:
   dev.gychoi.docmind: INFO
   org.springframework.ai: INFO
 
+# ──────────────────────────────────────────────────────────────────────────────
+# 모델 선택은 아래 프로파일 하나로 결정된다:  --spring.profiles.active=private | public | claude
+#   private : Ollama 로컬 (chat gemma3:4b · embedding bge-m3)        — 데이터가 서버 밖으로 안 나감
+#   public  : OpenAI/ChatGPT (chat gpt-4.1-mini · embedding text-embedding-3-small)  — OPENAI_API_KEY
+#   claude  : Anthropic Claude (chat) + Ollama bge-m3 (embedding)     — ANTHROPIC_API_KEY
+# 모델명·엔드포인트는 전부 환경변수로 덮어쓴다(OLLAMA_CHAT_MODEL, OPENAI_CHAT_MODEL, ANTHROPIC_CHAT_MODEL, OLLAMA_URL …).
+# 코드는 ChatModel/EmbeddingModel 인터페이스만 보므로 공급자를 바꿔도 소스 변경은 없다(README §4).
+# ──────────────────────────────────────────────────────────────────────────────
 ---
 # 사내망: 데이터가 서버 밖으로 나가지 않음
 spring:
@@ -99,6 +107,32 @@ spring:
       table-name: docmind_public
       dimensions: 1536                # text-embedding-3-small
 docmind.profile-label: public
+
+---
+# Claude(Anthropic): 답변 생성만 외부, 임베딩·문서는 로컬(Ollama bge-m3, docmind_private 공유)
+#   → private 로 올린 문서를 재인제스트 없이 그대로 쓰고, 외부로 나가는 것은 "질문 + 검색된 청크"뿐.
+#   임베딩까지 OpenAI 로 두고 싶으면 spring.ai.model.embedding=openai + table docmind_public + dimensions 1536 + docmind.index-label=public
+spring:
+  config.activate.on-profile: claude
+  ai:
+    model:
+      chat: anthropic
+      embedding: ollama
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY}
+      chat.options:
+        model: ${ANTHROPIC_CHAT_MODEL:claude-sonnet-4-5}
+        max-tokens: 1024
+    ollama:
+      base-url: ${OLLAMA_URL:http://localhost:11434}
+      init.pull-model-strategy: never
+      embedding.options.model: ${OLLAMA_EMBED_MODEL:bge-m3}
+    vectorstore.pgvector:
+      table-name: docmind_private
+      dimensions: 1024
+docmind:
+  profile-label: claude
+  index-label: private
 
 ---
 # 테스트: 모델 자동구성 끄고 가짜 모델 빈 사용(test 소스의 FakeAiConfig)

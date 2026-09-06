@@ -23,7 +23,10 @@ class AiHealthController(
         val actualDim = runCatching { embeddingModel.dimensions() }.getOrNull()
         return mapOf(
             "profile" to props.profileLabel,
+            "index" to props.effectiveIndexLabel,
             "chatModel" to generator.modelName(),
+            "chatProvider" to generator.javaClass.simpleName,
+            "embeddingProvider" to embeddingModel.javaClass.simpleName,
             "embeddingDimensions" to actualDim,
             "configuredDimensions" to dimensions,
             "dimensionsMatch" to (actualDim == null || actualDim == dimensions),

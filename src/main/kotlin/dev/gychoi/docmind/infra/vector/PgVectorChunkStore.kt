@@ -1,6 +1,7 @@
 package dev.gychoi.docmind.infra.vector
 
 import dev.gychoi.docmind.config.DocmindProperties
+import dev.gychoi.docmind.domain.Chunk
 import dev.gychoi.docmind.domain.ChunkDraft
 import dev.gychoi.docmind.domain.ChunkStore
 import dev.gychoi.docmind.domain.Document
@@ -44,6 +45,29 @@ class PgVectorChunkStore(
         // 라이브러리 필터 표현식 대신 SQL — metadata->>'documentId' 표현식 인덱스를 탄다 (V2 마이그레이션)
         jdbc.update("DELETE FROM $tableName WHERE metadata->>'documentId' = ?", documentId.toString())
     }
+
+    override fun listByDocument(documentId: UUID): List<Chunk> =
+        jdbc.query(
+            """
+            SELECT id::text AS id, content, metadata->>'filename' AS filename,
+                   (metadata->>'page')::int AS page, (metadata->>'chunkIndex')::int AS chunk_index
+            FROM $tableName
+            WHERE metadata->>'documentId' = ?
+            ORDER BY (metadata->>'chunkIndex')::int
+            """.trimIndent(),
+            { rs, _ ->
+                Chunk(
+                    id = rs.getString("id"),
+                    documentId = documentId,
+                    filename = rs.getString("filename") ?: "unknown",
+                    page = rs.getObject("page")?.let { (it as Number).toInt() },
+                    chunkIndex = rs.getObject("chunk_index")?.let { (it as Number).toInt() },
+                    content = rs.getString("content"),
+                    score = null,
+                )
+            },
+            documentId.toString(),
+        )
 
     override fun count(): Long = jdbc.queryForObject("SELECT count(*) FROM $tableName", Long::class.java) ?: 0
 }

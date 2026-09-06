@@ -1,10 +1,14 @@
 package dev.gychoi.docmind.application
 
 import dev.gychoi.docmind.config.DocmindProperties
+import dev.gychoi.docmind.domain.Chunk
 import dev.gychoi.docmind.domain.ChunkStore
 import dev.gychoi.docmind.domain.Document
+import dev.gychoi.docmind.domain.DocumentFileStore
 import dev.gychoi.docmind.domain.DocumentParser
 import dev.gychoi.docmind.domain.DocumentRepository
+import dev.gychoi.docmind.domain.DocumentStatus
+import dev.gychoi.docmind.domain.StoredFile
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
@@ -22,6 +26,7 @@ class IngestDocumentUseCase(
     private val documents: DocumentRepository,
     private val parser: DocumentParser,
     private val chunkStore: ChunkStore,
+    private val fileStore: DocumentFileStore,
     private val props: DocmindProperties,
     private val worker: IngestWorker,
 ) {
@@ -31,15 +36,16 @@ class IngestDocumentUseCase(
     fun accept(files: List<UploadFile>): List<Document> =
         files.map { file ->
             val sha = sha256(file.bytes)
-            val existing = documents.findBySha256(sha, props.profileLabel)
+            val existing = documents.findBySha256(sha, props.effectiveIndexLabel)
             if (existing != null) {
                 log.info("duplicate upload skipped: {} (same as {})", file.filename, existing.id)
                 documents.save(Document.duplicateOf(existing, file.filename))
             } else {
                 val doc =
                     documents.save(
-                        Document.queued(file.filename, sha, file.contentType, file.bytes.size.toLong(), props.profileLabel),
+                        Document.queued(file.filename, sha, file.contentType, file.bytes.size.toLong(), props.effectiveIndexLabel),
                     )
+                fileStore.save(doc.id, file.contentType, file.bytes) // 출처 → 원문 이동용 원본 보관
                 worker.process(doc.id, file)
                 doc
             }
@@ -48,6 +54,15 @@ class IngestDocumentUseCase(
     fun get(id: UUID): Document? = documents.findById(id)
 
     fun list(): List<Document> = documents.findAll()
+
+    /** 원본 파일. DUPLICATE 문서는 원본(같은 sha256)의 파일을 돌려준다. */
+    fun file(id: UUID): StoredFile? {
+        val doc = documents.findById(id) ?: return null
+        val originalId = if (doc.status == DocumentStatus.DUPLICATE) documents.findBySha256(doc.sha256, doc.profile)?.id ?: id else id
+        return fileStore.load(originalId)
+    }
+
+    fun chunks(id: UUID): List<Chunk> = chunkStore.listByDocument(id)
 
     fun delete(id: UUID) {
         chunkStore.deleteByDocument(id)

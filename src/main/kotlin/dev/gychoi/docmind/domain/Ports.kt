@@ -33,8 +33,27 @@ interface ChunkStore {
 
     fun deleteByDocument(documentId: UUID)
 
+    /** 뷰어용: 문서의 청크를 chunkIndex 순으로. 벡터 없이 텍스트·페이지·인덱스만. */
+    fun listByDocument(documentId: UUID): List<Chunk>
+
     fun count(): Long
 }
+
+/** 원본 파일 보관 포트 — 출처에서 원문으로 이동하기 위해 필요. 기본 구현은 PostgreSQL BYTEA, 대용량이면 오브젝트 스토리지로 교체. */
+interface DocumentFileStore {
+    fun save(
+        documentId: UUID,
+        contentType: String?,
+        bytes: ByteArray,
+    )
+
+    fun load(documentId: UUID): StoredFile?
+}
+
+class StoredFile(
+    val contentType: String?,
+    val bytes: ByteArray,
+)
 
 data class ChunkDraft(
     val content: String,

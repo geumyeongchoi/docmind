@@ -31,9 +31,10 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("io.projectreactor:reactor-core")
 
-    // Spring AI — 모델 (둘 다 classpath, spring.ai.model.chat/embedding 프로퍼티로 선택)
-    implementation("org.springframework.ai:spring-ai-starter-model-ollama")
-    implementation("org.springframework.ai:spring-ai-starter-model-openai")
+    // Spring AI — 모델. 셋 다 classpath 에 두고 spring.ai.model.chat / spring.ai.model.embedding 프로퍼티(프로파일)로 선택한다
+    implementation("org.springframework.ai:spring-ai-starter-model-ollama") // private: 로컬
+    implementation("org.springframework.ai:spring-ai-starter-model-openai") // public: ChatGPT(OpenAI)
+    implementation("org.springframework.ai:spring-ai-starter-model-anthropic") // claude: Anthropic (임베딩은 없음 → Ollama/OpenAI 임베딩과 조합)
     // Spring AI — 벡터/문서
     implementation("org.springframework.ai:spring-ai-starter-vector-store-pgvector")
     implementation("org.springframework.ai:spring-ai-tika-document-reader")

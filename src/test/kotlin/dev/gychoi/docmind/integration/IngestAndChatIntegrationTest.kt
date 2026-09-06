@@ -122,6 +122,21 @@ class IngestAndChatIntegrationTest {
         events shouldContain "token"
         sse shouldContain "hr-policy.md"
         sse shouldContain "FAKE_ANSWER"
+        sse shouldContain "\"chunkIndex\":" // 출처 → 뷰어 이동에 필요
+
+        // 출처에서 원문으로: 원본 파일 + 청크 목록
+        val content = rest.getForEntity("/api/documents/$id/content", ByteArray::class.java)
+        content.statusCode shouldBe HttpStatus.OK
+        content.headers.getFirst(HttpHeaders.CONTENT_DISPOSITION)!! shouldStartWith "inline"
+        String(content.body!!) shouldBe text
+        val chunks = rest.getForObject("/api/documents/$id/chunks", List::class.java)!!
+        chunks.size shouldBe chunkCount
+        (chunks.first() as Map<*, *>)["chunkIndex"] shouldBe 0
+
+        // 삭제 시 원본도 같이 사라진다(FK CASCADE)
+        rest.delete("/api/documents/$id")
+        rest.getForEntity("/api/documents/$id/content", ByteArray::class.java).statusCode shouldBe HttpStatus.NOT_FOUND
+        jdbc.queryForObject("SELECT count(*) FROM document_files WHERE document_id = ?::uuid", Long::class.java, id) shouldBe 0L
     }
 
     @Test

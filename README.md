@@ -1,7 +1,7 @@
 # docmind — 사내 문서 RAG 챗봇 (private / public 전환형)
 
 > 문서를 올리면 그 문서만 근거로 답하고 출처를 붙여주는 사무용 챗봇.
-> 사내망에서는 Ollama(로컬 모델), 외부에서는 OpenAI 최신 모델로 **설정 한 줄로 전환**.
+> 사내망에서는 Ollama(로컬 모델), 외부에서는 OpenAI(ChatGPT)·Anthropic(Claude) 모델로 **프로파일 한 줄로 전환**.
 
 설계 문서: `docs/design.md` (C4 · 시퀀스 · ERD · ADR 8건) · FigJam: https://www.figma.com/board/XBqQCmaNaMFG98Cx2xP9ZH
 
@@ -19,8 +19,9 @@
                      ├ Retrieval: 벡터 ∥ 전문검색(tsvector) → RRF 병합 → topK 6
                      ├ Chat: 근거 없으면 LLM 미호출 / ChatClient + MessageChatMemory / 질문 세이프가드
                      └ MCP Server: search_docs · ask_docs  (Claude Desktop / Claude Code)
-              profile=private → Ollama (bge-m3 1024d · gemma3/qwen3)
-              profile=public  → OpenAI (text-embedding-3-small 1536d · gpt-4.1-mini)
+              profile=private → Ollama (bge-m3 1024d · gemma3/qwen3)                 [사내망]
+              profile=public  → OpenAI (text-embedding-3-small 1536d · gpt-4.1-mini)   [ChatGPT]
+              profile=claude  → Anthropic Claude(chat) + Ollama bge-m3(embedding)       [Claude · 문서는 로컬에]
               PostgreSQL 17 + pgvector  (documents · docmind_private · docmind_public · tsvector GIN)
 ```
 
@@ -38,7 +39,19 @@
 | 세이프가드를 질문에만 적용 | SafeGuardAdvisor(프롬프트 전체) | 인젝션 문구가 든 문서가 검색되면 정상 질문까지 거절되는 문제 |
 | Boot 3.5 / Spring AI 1.1 (GA) | Boot 4.1 / Spring AI 2.0 | 첫 스프린트는 안정 라인, 2.0 업그레이드는 별도 브랜치(로드맵) |
 
-## 4. 실행
+## 4. 실행 · 모델 설정
+
+**모델(내부/외부)은 코드가 아니라 `src/main/resources/application.yml` 의 Spring 프로파일로 고른다.** 실행 시 `--spring.profiles.active=…` 하나만 바꾸면 되고, 모델명·주소·키는 전부 환경변수다. 코드는 Spring AI 의 `ChatModel`/`EmbeddingModel` 인터페이스만 보므로 공급자를 바꿔도 소스 변경이 없다.
+
+| 프로파일 | 답변 생성(chat) | 임베딩 | 벡터 테이블 | 필요한 환경변수 | 데이터 흐름 |
+|---|---|---|---|---|---|
+| `private` | Ollama `gemma3:4b` | Ollama `bge-m3` (1024d) | `docmind_private` | `OLLAMA_URL`, `OLLAMA_CHAT_MODEL` | 전부 서버 안 |
+| `public` | OpenAI `gpt-4.1-mini` | OpenAI `text-embedding-3-small` (1536d) | `docmind_public` | `OPENAI_API_KEY`, `OPENAI_CHAT_MODEL` | 문서·질문 모두 OpenAI 로 |
+| `claude` | Anthropic `claude-sonnet-4-5` | Ollama `bge-m3` (1024d) | `docmind_private` (private 와 공유) | `ANTHROPIC_API_KEY`, `ANTHROPIC_CHAT_MODEL` | 문서 임베딩은 로컬, **질문 + 검색된 청크만** Anthropic 으로 |
+
+- `claude` 가 임베딩을 로컬에 두는 이유: Anthropic 은 임베딩 API 가 없고, 임베딩 모델을 바꾸면 벡터 공간이 달라져 문서를 전부 재인제스트해야 한다. private 와 임베딩을 공유하면 같은 문서를 두 모드에서 그대로 쓰고, 외부로 나가는 데이터는 질문과 topK 청크로 최소화된다(`docmind.index-label: private`).
+- 다른 공급자(Azure OpenAI, Google Gemini, Mistral, OpenAI 호환 서버 등)를 붙이려면: `build.gradle.kts` 에 해당 `spring-ai-starter-model-*` 추가 → yml 에 프로파일 블록 하나 추가(`spring.ai.model.chat: <provider>` + 키). 코드 변경 없음.
+- 지금 어떤 모델이 붙어 있는지는 `GET /api/health/ai` (화면 상단에도 표시) — profile · chatModel · chatProvider · embeddingProvider · 차원 일치 여부.
 
 ```bash
 docker compose up -d pgvector                 # localhost:55432 (사내 DB 5432와 충돌 방지)
@@ -48,15 +61,20 @@ brew install ollama && ollama serve &
 ollama pull bge-m3 && ollama pull gemma3:4b
 ./gradlew bootRun --args='--spring.profiles.active=private'
 
-# public — OpenAI
+# public — OpenAI(ChatGPT)
 OPENAI_API_KEY=sk-... ./gradlew bootRun --args='--spring.profiles.active=public'
+
+# claude — Anthropic (임베딩은 로컬 Ollama bge-m3 재사용)
+ANTHROPIC_API_KEY=sk-ant-... ./gradlew bootRun --args='--spring.profiles.active=claude'
 
 scripts/seed.sh                                # eval/docs 8개 업로드 → DONE 대기 → 상태 표
 ./gradlew eval                                 # 평가셋 30문항 → build/eval/report.md
 open http://localhost:8080                     # 최소 UI (업로드·채팅·출처)
 ```
 
-API: `POST /api/documents`(multipart) · `GET /api/documents[/{id}]` · `DELETE /api/documents/{id}` · `POST /api/chat`(SSE: citations → token* → done) · `GET /api/health/ai`
+API: `POST /api/documents`(multipart) · `GET /api/documents[/{id}]` · `GET /api/documents/{id}/content`(원본, inline) · `GET /api/documents/{id}/chunks`(뷰어용) · `DELETE /api/documents/{id}` · `POST /api/chat`(SSE: citations → token* → done) · `GET /api/health/ai`
+
+출처 → 원문: 출처 카드와 답변 속 `[출처: 2]` 는 `viewer.html?id=…&chunk=…&page=…` 로 연결된다. 뷰어는 인덱싱된 청크 전체를 보여주고 출처 청크를 강조·스크롤하며, PDF 는 브라우저 내장 뷰어로 원본을 `#page=` 위치에 함께 연다. 원본은 업로드 시 `document_files`(BYTEA) 에 보관하고 문서 삭제 시 CASCADE 로 함께 지운다(포트 `DocumentFileStore` — 대용량이면 오브젝트 스토리지 구현으로 교체).
 MCP: `GET /sse` + `POST /mcp/message` — Claude Desktop 설정 예시는 `docs/mcp.md`
 
 ### 검증

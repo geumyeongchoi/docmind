@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>docmind · 원문</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --line:#e3e6ea; --text:#1d2430; --muted:#6b7480; --accent:#2f5fd0; --hl:#fff3bf; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:12px 20px; background:var(--card); border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:center; }
+  header h1 { margin:0; font-size:16px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  header a, header button { font:inherit; font-size:13px; color:var(--accent); text-decoration:none; background:#eef2ff; border:0; border-radius:8px; padding:6px 10px; cursor:pointer; }
+  header small { color:var(--muted); }
+  main { display:grid; gap:16px; padding:16px 20px; height:calc(100vh - 52px); grid-template-columns: 1fr; }
+  main.split { grid-template-columns: 1fr 420px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; display:flex; flex-direction:column; min-height:0; }
+  section h2 { font-size:12px; margin:0; padding:10px 14px; border-bottom:1px solid var(--line); color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .body { padding:12px 14px; overflow:auto; flex:1; }
+  iframe { border:0; width:100%; height:100%; border-radius:0 0 10px 10px; }
+  .chunk { padding:10px 12px; margin-bottom:10px; border:1px solid var(--line); border-radius:8px; white-space:pre-wrap; scroll-margin-top:12px; }
+  .chunk .tag { font-size:11px; color:var(--muted); margin-bottom:4px; display:block; }
+  .chunk.hit { background:var(--hl); border-color:#e6c84a; }
+  .chunk.hit .tag { color:#8a6d00; font-weight:600; }
+  .meta { font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <a href="./">← docmind</a>
+  <h1 id="title">…</h1>
+  <small id="info"></small>
+  <a id="raw" href="#" target="_blank" rel="noopener">원본 파일 열기 ↗</a>
+</header>
+<main id="main">
+  <section id="rawPane" hidden>
+    <h2>원본</h2>
+    <iframe id="frame" title="원본"></iframe>
+  </section>
+  <section>
+    <h2>본문 (인덱싱된 청크 · 출처 위치 강조)</h2>
+    <div class="body" id="chunks"></div>
+  </section>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const q = new URLSearchParams(location.search);
+const id = q.get('id'); const hit = q.get('chunk'); const page = q.get('page');
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+(async () => {
+  if (!id) { $('#title').textContent = '문서 id 가 없습니다'; return; }
+  const doc = await (await fetch('/api/documents/' + id)).json();
+  document.title = 'docmind · ' + doc.filename;
+  $('#title').textContent = doc.filename;
+  $('#info').textContent = `${doc.status} · ${doc.chunkCount} chunks · ${doc.profile}`;
+  const contentUrl = `/api/documents/${id}/content`;
+  $('#raw').href = contentUrl;
+
+  // PDF 는 브라우저 내장 뷰어로 원본을 같이 보여준다(#page= 로 출처 페이지 이동). 텍스트류는 청크 본문이 곧 원문이므로 생략.
+  const isPdf = (doc.contentType || '').includes('pdf') || /\.pdf$/i.test(doc.filename);
+  if (isPdf) {
+    const head = await fetch(contentUrl, { method: 'HEAD' }).catch(() => null);
+    if (!head || head.ok) {
+      $('#rawPane').hidden = false; $('#main').classList.add('split');
+      $('#frame').src = contentUrl + (page ? '#page=' + page : '');
+    }
+  }
+
+  const chunks = await (await fetch(`/api/documents/${id}/chunks`)).json();
+  if (!chunks.length) { $('#chunks').innerHTML = '<div class="meta">인덱싱된 청크가 없습니다(처리 중이거나 실패).</div>'; return; }
+  $('#chunks').innerHTML = chunks.map(c => {
+    const isHit = hit != null && String(c.chunkIndex) === hit;
+    return `<div class="chunk${isHit ? ' hit' : ''}" id="c${c.chunkIndex}"><span class="tag">chunk ${c.chunkIndex}${c.page != null ? ' · p.' + c.page : ''}${isHit ? ' · 출처' : ''}</span>${esc(c.content)}</div>`;
+  }).join('');
+  const target = hit != null ? document.getElementById('c' + hit) : null;
+  if (target) target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+})().catch(e => { $('#title').textContent = '불러오기 실패'; $('#chunks').innerHTML = `<div class="meta">${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>
