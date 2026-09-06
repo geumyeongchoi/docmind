@@ -39,6 +39,8 @@ class IngestDocumentUseCase(
             val existing = documents.findBySha256(sha, props.effectiveIndexLabel)
             if (existing != null) {
                 log.info("duplicate upload skipped: {} (same as {})", file.filename, existing.id)
+                // 원본 보관 기능 이전에 올린 문서는 같은 파일을 다시 올리면 원본만 채워 넣는다(재인제스트 없이 뷰어 활성화)
+                if (fileStore.load(existing.id) == null) fileStore.save(existing.id, file.contentType, file.bytes)
                 documents.save(Document.duplicateOf(existing, file.filename))
             } else {
                 val doc =
