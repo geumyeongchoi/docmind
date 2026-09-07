@@ -4,6 +4,7 @@ plugins {
     id("org.springframework.boot") version "3.5.6"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.jlleitschuh.gradle.ktlint") version "13.0.0"
+    id("com.google.cloud.tools.jib") version "3.4.5"   // 컨테이너 이미지: Docker 없이 GHCR 로 직접 push (GitHub Actions)
 }
 
 group = "dev.gychoi"
@@ -32,9 +33,9 @@ dependencies {
     implementation("io.projectreactor:reactor-core")
 
     // Spring AI — 모델. 셋 다 classpath 에 두고 spring.ai.model.chat / spring.ai.model.embedding 프로퍼티(프로파일)로 선택한다
-    implementation("org.springframework.ai:spring-ai-starter-model-ollama") // private: 로컬
-    implementation("org.springframework.ai:spring-ai-starter-model-openai") // public: ChatGPT(OpenAI)
-    implementation("org.springframework.ai:spring-ai-starter-model-anthropic") // claude: Anthropic (임베딩은 없음 → Ollama/OpenAI 임베딩과 조합)
+    implementation("org.springframework.ai:spring-ai-starter-model-ollama")      // private: 로컬
+    implementation("org.springframework.ai:spring-ai-starter-model-openai")      // public: ChatGPT(OpenAI)
+    implementation("org.springframework.ai:spring-ai-starter-model-anthropic")   // claude: Anthropic (임베딩은 없음 → Ollama/OpenAI 임베딩과 조합)
     // Spring AI — 벡터/문서
     implementation("org.springframework.ai:spring-ai-starter-vector-store-pgvector")
     implementation("org.springframework.ai:spring-ai-tika-document-reader")
@@ -90,4 +91,15 @@ tasks.register<JavaExec>("eval") {
         "eval/golden.yaml",
         "build/eval/report.md",
     )
+}
+
+// jib: ./gradlew jib --image=ghcr.io/<user>/docmind:<tag>   (Actions 에서 실행, 로컬은 jibDockerBuild)
+jib {
+    from { image = "eclipse-temurin:21-jre" }
+    container {
+        ports = listOf("8080")
+        jvmFlags = listOf("-XX:MaxRAMPercentage=70", "-Djava.security.egd=file:/dev/./urandom")
+        creationTime.set("USE_CURRENT_TIMESTAMP")
+        user = "1000:1000"
+    }
 }
