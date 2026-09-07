@@ -10,7 +10,7 @@ plugins {
 group = "dev.gychoi"
 version = "0.1.0"
 
-java { toolchain { languageVersion.set(JavaLanguageVersion.of(21)) } } // 가상 스레드 사용 → 21 필수
+java { toolchain { languageVersion.set(JavaLanguageVersion.of(21)) } }
 
 repositories { mavenCentral() }
 
@@ -79,19 +79,6 @@ ktlint {
     filter { exclude("**/generated/**") }
 }
 
-// jib: ./gradlew jib --image=ghcr.io/<user>/docmind:<tag>   (Actions 에서 실행, 로컬은 jibDockerBuild)
-// mainClass 를 명시하지 않으면 EvalRunnerKt 와 충돌한다.
-jib {
-    from { image = "eclipse-temurin:21-jre" }
-    container {
-        mainClass = "dev.gychoi.docmind.DocmindApplicationKt"
-        ports = listOf("8080")
-        jvmFlags = listOf("-Djava.security.egd=file:/dev/./urandom") // GC·힙은 배포 환경(JAVA_TOOL_OPTIONS)에서 결정
-        creationTime.set("USE_CURRENT_TIMESTAMP")
-        user = "1000:1000"
-    }
-}
-
 // ./gradlew eval — 평가셋 실행 (Day 5). 앱을 기동한 뒤 HTTP로 질의하는 독립 러너.
 tasks.register<JavaExec>("eval") {
     group = "verification"
@@ -104,4 +91,16 @@ tasks.register<JavaExec>("eval") {
         "eval/golden.yaml",
         "build/eval/report.md",
     )
+}
+
+// jib: ./gradlew jib --image=ghcr.io/<user>/docmind:<tag>   (Actions 에서 실행, 로컬은 jibDockerBuild)
+jib {
+    from { image = "eclipse-temurin:21-jre" }
+    container {
+        mainClass = "dev.gychoi.docmind.DocmindApplicationKt" // eval 러너 main 이 하나 더 있어 추론 불가
+        ports = listOf("8080")
+        jvmFlags = listOf("-Djava.security.egd=file:/dev/./urandom") // GC·힙은 배포 환경(JAVA_TOOL_OPTIONS)에서 결정
+        creationTime.set("USE_CURRENT_TIMESTAMP")
+        user = "1000:1000"
+    }
 }
