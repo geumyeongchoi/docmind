@@ -163,3 +163,93 @@
   forbidden: ["admin1234"]
   expectedDoc: null
   tag: injection
+- id: q33
+  question: "장애 P1 등급은 어떤 경우인가요?"
+  keywords: ["중단"]
+  expectedDoc: incident-response-runbook.md
+  tag: fact
+- id: q34
+  question: "포스트모템은 장애 종료 후 언제까지 작성하나요?"
+  keywords: ["5영업일"]
+  expectedDoc: incident-response-runbook.md
+  tag: fact
+- id: q35
+  question: "온콜 1차 담당자는 호출 후 몇 분 안에 응답해야 하나요?"
+  keywords: ["10분"]
+  expectedDoc: oncall-policy.md
+  tag: fact
+- id: q36
+  question: "PR 첫 리뷰 응답은 언제까지 남겨야 하나요?"
+  keywords: ["24시간"]
+  expectedDoc: code-review-guideline.md
+  tag: fact
+- id: q37
+  question: "브랜치 병합 방식은 무엇으로 통일했나요?"
+  keywords: ["squash"]
+  expectedDoc: git-branch-strategy.md
+  tag: entity
+- id: q38
+  question: "카나리 배포는 얼마나 관찰한 뒤 전체 배포하나요?"
+  keywords: ["15분"]
+  expectedDoc: deploy-checklist.md
+  tag: fact
+- id: q39
+  question: "E4090 오류 코드는 무슨 뜻인가요?"
+  keywords: ["멱등"]
+  expectedDoc: api-error-codes.md
+  tag: entity
+- id: q40
+  question: "주문과 결제 기록은 몇 년 보관하나요?"
+  keywords: ["5년"]
+  expectedDoc: data-retention-policy.md
+  tag: fact
+- id: q41
+  question: "개인정보 유출을 인지하면 몇 시간 안에 보고해야 하나요?"
+  keywords: ["24시간"]
+  expectedDoc: privacy-handling-guide.md
+  tag: fact
+- id: q42
+  question: "Redis 캐시의 기본 TTL은 얼마인가요?"
+  keywords: ["10분"]
+  expectedDoc: redis-cache-guideline.md
+  tag: fact
+- id: q43
+  question: "order.reserved 토픽의 파티션은 몇 개인가요?"
+  keywords: ["12"]
+  expectedDoc: kafka-topic-catalog.md
+  tag: entity
+- id: q44
+  question: "사내 추천으로 입사해 수습을 통과하면 추천인에게 얼마를 지급하나요?"
+  keywords: ["200만원"]
+  expectedDoc: recruiting-process.md
+  tag: fact
+- id: q45
+  question: "여신이 무슨 뜻인가요?"
+  keywords: ["한도"]
+  expectedDoc: glossary.md
+  tag: fact
+- id: q46
+  question: "고객 이메일 문의는 며칠 안에 종결해야 하나요?"
+  keywords: ["3영업일"]
+  expectedDoc: customer-support-sla.md
+  tag: fact
+- id: q47
+  question: "BAT_SETTLE_001 정산 배치는 몇 시에 시작하나요?"
+  keywords: ["02:00"]
+  expectedDoc: legacy-batch-notes.md
+  tag: entity
+- id: q48
+  question: "모바일 앱이 지원하는 최소 iOS 버전은 무엇인가요?"
+  keywords: ["16"]
+  expectedDoc: mobile-app-release-notes.md
+  tag: fact
+- id: q49
+  question: "트레이싱 샘플링 비율은 얼마로 정했나요?"
+  keywords: ["10"]
+  expectedDoc: meeting-notes-2026-09.md
+  tag: fact
+- id: q50
+  question: "사내 표준 JDK 버전은 무엇인가요?"
+  keywords: ["21"]
+  expectedDoc: meeting-notes-2026-07.md
+  tag: fact

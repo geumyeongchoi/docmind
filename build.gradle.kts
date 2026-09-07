@@ -97,6 +97,7 @@ tasks.register<JavaExec>("eval") {
 jib {
     from { image = "eclipse-temurin:21-jre" }
     container {
+        mainClass = "dev.gychoi.docmind.DocmindApplicationKt" // eval 러너 main 이 하나 더 있어 추론 불가
         ports = listOf("8080")
         jvmFlags = listOf("-XX:MaxRAMPercentage=70", "-Djava.security.egd=file:/dev/./urandom")
         creationTime.set("USE_CURRENT_TIMESTAMP")
