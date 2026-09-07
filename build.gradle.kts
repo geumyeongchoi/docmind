@@ -4,7 +4,7 @@ plugins {
     id("org.springframework.boot") version "3.5.6"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.jlleitschuh.gradle.ktlint") version "13.0.0"
-    id("com.google.cloud.tools.jib") version "3.4.5"   // 컨테이너 이미지: Docker 없이 GHCR 로 직접 push (GitHub Actions)
+    id("com.google.cloud.tools.jib") version "3.4.5" // 컨테이너 이미지: Docker 없이 GHCR 로 직접 push (GitHub Actions)
 }
 
 group = "dev.gychoi"
