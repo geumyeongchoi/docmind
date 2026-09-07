@@ -33,6 +33,12 @@ data class DocmindProperties(
     )
 
     data class Safeguard(
+        /** 질문·답변 어디에 나와도 차단하는 문구. 문서 안의 지시문 판정에도 함께 쓰인다. */
         val sensitivePhrases: List<String> = emptyList(),
+        /**
+         * 출력 후처리에서 "지시문 복창"으로 볼 최소 일치 길이(정규화 후 글자 수).
+         * 낮추면 오탐이 늘고, 높이면 짧은 지시문을 놓친다. 12자 ≈ 한글 12음절.
+         */
+        val echoLength: Int = 12,
     )
 }

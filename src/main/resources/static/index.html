@@ -258,7 +258,7 @@ $('#ask').addEventListener('submit', async (e) => {
   const bot = addMsg('bot', '');
   $('#cites').innerHTML = '';
 
-  let raw = '', pending = false;
+  let raw = '', pending = false, redacted = false;
   // 토큰마다 전체를 다시 렌더한다. 문단·목록·표 경계는 뒤늦게 확정되므로 증분 렌더가 불가능하고,
   // 답변 길이가 수 KB 수준이라 전체 재렌더가 더 싸다. 다만 프레임당 1회로 묶는다.
   const paint = (done) => {
@@ -282,7 +282,9 @@ $('#ask').addEventListener('submit', async (e) => {
         if (line.startsWith('event:')) ev = line.slice(6).trim();
         else if (line.startsWith('data:')) {
           const data = JSON.parse(line.slice(5).trim());
-          if (ev === 'token') { raw += data.text; schedule(); }
+          if (ev === 'token') { if (!redacted) { raw += data.text; schedule(); } }
+          // 출력 후처리 가드: 문서에 심긴 지시문이 답변에 새어 나오면 서버가 지금까지의 토큰을 폐기하라고 알린다.
+          else if (ev === 'redact') { redacted = true; raw = data.text; schedule(); }
           else if (ev === 'citations') { renderCites(data); schedule(); }
           else if (ev === 'error') { raw += '\n\n> **오류** ' + data.message; schedule(); }
           else if (ev === 'done') {

@@ -49,6 +49,7 @@ docmind:
   chat:
     max-memory-messages: 20           # 10턴 = 20 메시지
   safeguard:
+    echo-length: 12                   # 답변이 문서 속 지시문과 정규화 후 이 길이 이상 일치하면 폐기(출력 후처리 가드)
     sensitive-phrases:
       - "ignore previous instructions"
       - "ignore all previous instructions"

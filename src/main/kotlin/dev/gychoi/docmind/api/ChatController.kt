@@ -22,7 +22,8 @@ data class ChatRequest(
 )
 
 /**
- * SSE 이벤트 순서: citations → token* → done.  (설계 문서 §8)
+ * SSE 이벤트 순서: citations → token* → (redact) → done.  (설계 문서 §8)
+ * redact 는 출력 후처리 가드가 작동했을 때만 나오며, 수신 측은 그때까지 받은 token 을 버리고 redact.text 로 교체한다.
  * SseEmitter + 전용 스레드: 검색·LLM 스트리밍이 서블릿 스레드를 점유하지 않도록 한다.
  */
 @RestController
@@ -61,6 +62,7 @@ class ChatController(
             when (ev) {
                 is AnswerEvent.Citations -> "citations" to ev.items
                 is AnswerEvent.Token -> "token" to mapOf("text" to ev.text)
+                is AnswerEvent.Redact -> "redact" to mapOf("text" to ev.text, "reason" to ev.reason)
                 is AnswerEvent.Done -> "done" to ev
             }
         emitter.send(SseEmitter.event().name(name).data(objectMapper.writeValueAsString(payload), MediaType.APPLICATION_JSON))

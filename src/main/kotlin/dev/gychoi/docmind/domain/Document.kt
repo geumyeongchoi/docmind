@@ -93,6 +93,16 @@ sealed interface AnswerEvent {
         val text: String,
     ) : AnswerEvent
 
+    /**
+     * 출력 후처리 가드가 지금까지 보낸 토큰을 폐기하고 [text] 로 교체하라고 지시한다.
+     * 스트리밍이라 토큰이 이미 나간 뒤에야 위반이 확정될 수 있으므로 "취소" 이벤트가 필요하다.
+     * 수신 측(웹 UI·평가 러너)은 누적 버퍼를 비우고 [text] 만 남긴 뒤 이후 토큰을 무시한다.
+     */
+    data class Redact(
+        val text: String,
+        val reason: String,
+    ) : AnswerEvent
+
     data class Done(
         val elapsedMs: Long,
         val profile: String,

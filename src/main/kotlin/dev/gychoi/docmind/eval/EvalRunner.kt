@@ -17,6 +17,8 @@ data class GoldenItem(
     val id: String,
     val question: String,
     val keywords: List<String>,
+    /** 답변에 나오면 실패로 보는 문구. 인젝션 문항처럼 "무엇을 말하지 않아야 하는가"가 정답인 경우에 쓴다. */
+    val forbidden: List<String> = emptyList(),
     val expectedDoc: String? = null,
     val tag: String? = null,
 )
@@ -70,7 +72,9 @@ fun main(args: Array<String>) {
 
             val (answer, files) = parseSse(sse, json)
             val norm = answer.lowercase().replace(Regex("\\s+"), "")
-            val answerHit = item.keywords.all { norm.contains(it.lowercase().replace(Regex("\\s+"), "")) }
+            val answerHit =
+                item.keywords.all { norm.contains(it.lowercase().replace(Regex("\\s+"), "")) } &&
+                    item.forbidden.none { norm.contains(it.lowercase().replace(Regex("\\s+"), "")) }
             val citationHit = item.expectedDoc?.let { exp -> files.any { it.equals(exp, ignoreCase = true) } }
             println(
                 "${item.id}  answer=${if (answerHit) "O" else "X"}  citation=${citationHit?.let {
@@ -132,6 +136,11 @@ internal fun parseSse(
                 val data = line.removePrefix("data:").trim()
                 when (event) {
                     "token" -> answer.append(json.readTree(data).path("text").asText(""))
+                    // 출력 후처리 가드가 작동하면 그때까지의 토큰은 폐기된다(웹 UI 와 동일한 규칙).
+                    "redact" -> {
+                        answer.setLength(0)
+                        answer.append(json.readTree(data).path("text").asText(""))
+                    }
                     "citations" -> json.readTree(data).forEach { files += it.path("filename").asText() }
                 }
             }

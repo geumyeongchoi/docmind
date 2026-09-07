@@ -55,6 +55,11 @@ class DocmindMcpTools(
                     hits =
                         ev.items.map { SearchHit(it.documentId?.toString(), it.filename, it.page, it.score, it.snippet) }
                 is AnswerEvent.Token -> sb.append(ev.text)
+                // 출력 후처리 가드가 작동하면 그때까지 모은 토큰을 버리고 대체 문구만 남긴다(웹 UI·평가 러너와 동일한 규칙).
+                is AnswerEvent.Redact -> {
+                    sb.setLength(0)
+                    sb.append(ev.text)
+                }
                 is AnswerEvent.Done -> Unit
             }
         }
