@@ -7,7 +7,7 @@
 <style>
   :root { --bg:#f6f7f9; --card:#fff; --line:#e3e6ea; --text:#1d2430; --muted:#6b7480; --accent:#2f5fd0; }
   * { box-sizing:border-box; }
-  body { margin:0; font:14px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; background:var(--bg); color:var(--text); }
+  body { margin:0; font:14px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; background:var(--bg); color:var(--text); }
   header { padding:14px 20px; background:var(--card); border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:center; }
   header h1 { margin:0; font-size:18px; } header small { color:var(--muted); }
   main { display:grid; grid-template-columns: 300px 1fr 320px; gap:16px; padding:16px 20px; height:calc(100vh - 56px); }
@@ -17,20 +17,43 @@
   .doc { padding:8px 0; border-bottom:1px dashed var(--line); font-size:13px; }
   .doc .st { font-size:11px; padding:1px 6px; border-radius:10px; background:#eef2ff; color:var(--accent); margin-left:6px; }
   .doc .st.DONE { background:#e7f6ec; color:#1e7a3a; } .doc .st.FAILED, .doc .st.DUPLICATE { background:#fdecea; color:#b3261e; }
-  .msg { margin:8px 0; padding:10px 12px; border-radius:10px; white-space:pre-wrap; max-width:90%; }
-  .msg.user { background:#eef2ff; margin-left:auto; } .msg.bot { background:#f1f3f5; }
+  .msg { margin:10px 0; padding:10px 13px; border-radius:10px; max-width:92%; }
+  .msg.user { background:#eef2ff; margin-left:auto; white-space:pre-wrap; max-width:80%; }
+  .msg.bot { background:#f1f3f5; }
   .cite { font-size:12px; padding:8px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; display:block; color:inherit; text-decoration:none; }
   .cite:hover { border-color:var(--accent); background:#f7f9ff; }
   .cite b { display:block; } .cite .sc { color:var(--muted); } .cite .no { color:var(--accent); font-weight:600; margin-right:6px; }
   .cite .open { float:right; color:var(--accent); font-size:11px; }
-  .msg.bot a.ref { color:var(--accent); text-decoration:none; font-size:12px; padding:0 4px; border:1px solid #c9d6f5; border-radius:6px; background:#fff; }
-  .msg.bot a.ref:hover { background:#eef2ff; }
+  a.ref { color:var(--accent); text-decoration:none; font-size:12px; padding:0 4px; border:1px solid #c9d6f5; border-radius:6px; background:#fff; }
+  a.ref:hover { background:#eef2ff; }
   form.ask { display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--line); }
   input[type=text] { flex:1; padding:10px 12px; border:1px solid var(--line); border-radius:8px; font:inherit; }
   button { padding:10px 14px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; cursor:pointer; }
   button:disabled { opacity:.5; cursor:default; }
-  .meta { font-size:11px; color:var(--muted); margin-top:4px; }
+  .meta { font-size:11px; color:var(--muted); margin-top:6px; }
   input[type=file] { font-size:12px; }
+
+  /* ── 마크다운 렌더 결과 스타일 ───────────────────────────────────────── */
+  .md > *:first-child { margin-top:0; } .md > *:last-child { margin-bottom:0; }
+  .md p { margin:.5em 0; }
+  .md h3, .md h4, .md h5, .md h6 { margin:1em 0 .4em; line-height:1.35; }
+  .md h3 { font-size:16px; } .md h4 { font-size:15px; } .md h5, .md h6 { font-size:14px; color:var(--muted); }
+  .md ul, .md ol { margin:.45em 0; padding-left:1.45em; }
+  .md li { margin:.22em 0; }
+  .md li > ul, .md li > ol { margin:.22em 0; }
+  .md li::marker { color:var(--muted); }
+  .md code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.9em; background:#e5e9ee; padding:1px 5px; border-radius:4px; }
+  .md pre { background:#1d2430; color:#e8ecf1; padding:10px 12px; border-radius:8px; overflow-x:auto; margin:.6em 0; }
+  .md pre code { background:none; color:inherit; padding:0; font-size:12px; line-height:1.55; }
+  .md blockquote { margin:.6em 0; padding:.15em .9em; border-left:3px solid #c9d0d8; color:var(--muted); }
+  .md table { border-collapse:collapse; margin:.6em 0; font-size:13px; display:block; max-width:100%; overflow-x:auto; }
+  .md th, .md td { border:1px solid var(--line); padding:5px 9px; text-align:left; }
+  .md th { background:#eaeef3; font-weight:600; white-space:nowrap; }
+  .md hr { border:0; border-top:1px solid var(--line); margin:.9em 0; }
+  .md a { color:var(--accent); }
+  .md strong { font-weight:650; }
+  .md .cursor { display:inline-block; width:7px; height:1em; vertical-align:-2px; background:var(--accent); opacity:.6; animation:blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
 </style>
 </head>
 <body>
@@ -59,17 +82,142 @@
 <script>
 const sessionId = 'web-' + Math.random().toString(36).slice(2);
 const $ = (s) => document.querySelector(s);
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
+
+let lastCites = [];
+function viewerUrl(c) {
+  if (!c || !c.documentId) return null;
+  const p = new URLSearchParams({ id: c.documentId });
+  if (c.chunkIndex != null) p.set('chunk', c.chunkIndex);
+  if (c.page != null) p.set('page', c.page);
+  return 'viewer.html?' + p;
+}
+
+/* ══ 경량 마크다운 렌더러 ══════════════════════════════════════════════════
+   외부 라이브러리(CDN) 없이 동작해야 한다 — private 프로파일은 폐쇄망을 가정하므로
+   marked/DOMPurify 를 CDN 에서 받을 수 없고, 정적 UI 에 번들러를 들이고 싶지도 않다.
+   지원 범위는 LLM 답변에 실제로 나오는 것만: 제목 · 굵게/기울임/취소선 ·
+   인라인 코드/코드블록 · 목록(중첩) · 표 · 인용 · 구분선 · 링크.
+   XSS: 원문을 esc() 로 먼저 이스케이프한 뒤에만 태그를 만들어 넣는다. 모델이
+   답변에 <script> 를 써도 텍스트로 보인다. 링크는 http(s) 스킴만 허용.
+   ═══════════════════════════════════════════════════════════════════════ */
+const MD = (() => {
+  const ITEM = /^(\s*)([-*+]|(\d+)[.)])\s+(.*)$/;
+  const SENT = String.fromCharCode(0); // 코드 스팬 자리표시자 — 모델 출력에 절대 없는 문자
+
+  /** 인라인 서식. 코드 스팬을 먼저 빼두고(내부엔 서식 미적용) 이스케이프 후 치환. */
+  function inline(src) {
+    const codes = [];
+    let s = String(src ?? '').replace(/`([^`\n]+)`/g, (_, c) => { codes.push(c); return SENT + (codes.length - 1) + SENT; });
+    s = esc(s);
+    s = s.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    s = s.replace(/\*\*\*([^\n]+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    s = s.replace(/\*\*([^\n]+?)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/(^|[^\w*])\*([^*\n]+)\*(?![\w*])/g, '$1<em>$2</em>');
+    s = s.replace(/(^|\s)_([^_\n]+)_(?=\s|$|[,.)\]])/g, '$1<em>$2</em>');
+    s = s.replace(/~~([^\n]+?)~~/g, '<del>$1</del>');
+    s = refs(s);
+    return s.replace(new RegExp(SENT + '(\\d+)' + SENT, 'g'), (_, i) => '<code>' + esc(codes[i]) + '</code>');
+  }
+
+  /** 답변 본문의 [출처: 2] / [출처: 1, 3] 을 뷰어 링크로. citations 이벤트가 토큰보다 먼저 온다. */
+  function refs(s) {
+    return s.replace(/\[출처:\s*([0-9,\s]+)\]/g, (m, nums) => {
+      const links = nums.split(',').map(n => n.trim()).filter(Boolean).map(n => {
+        const c = lastCites[Number(n) - 1], url = viewerUrl(c);
+        return url ? '<a class="ref" href="' + url + '" target="_blank" rel="noopener" title="' + esc(c.filename) + '">' + n + '</a>' : n;
+      });
+      return '[출처: ' + links.join(', ') + ']';
+    });
+  }
+
+  function cells(line) { return line.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(c => c.trim()); }
+
+  function table(lines, i) {
+    const head = cells(lines[i]);
+    const align = cells(lines[i + 1]).map(c => /^:.*:$/.test(c) ? 'center' : /:$/.test(c) ? 'right' : 'left');
+    const th = head.map((c, k) => '<th style="text-align:' + (align[k] || 'left') + '">' + inline(c) + '</th>').join('');
+    let html = '<table><thead><tr>' + th + '</tr></thead><tbody>', j = i + 2;
+    for (; j < lines.length && lines[j].includes('|') && lines[j].trim(); j++) {
+      const row = cells(lines[j]);
+      html += '<tr>' + head.map((_, k) => '<td style="text-align:' + (align[k] || 'left') + '">' + inline(row[k] ?? '') + '</td>').join('') + '</tr>';
+    }
+    return { html: html + '</tbody></table>', next: j };
+  }
+
+  /** 들여쓰기 기준 중첩 목록. 하위 목록은 직전 li 안으로 넣는다. */
+  function list(lines, start) {
+    const base = lines[start].match(ITEM)[1].length;
+    const ordered = /^\s*\d+[.)]\s/.test(lines[start]);
+    let html = ordered ? '<ol>' : '<ul>', i = start;
+    while (i < lines.length) {
+      const m = lines[i].match(ITEM);
+      if (!m) {
+        if (!lines[i].trim()) { // 빈 줄 뒤에도 항목이 이어지면 같은 목록으로 계속
+          let j = i; while (j < lines.length && !lines[j].trim()) j++;
+          const n = j < lines.length && lines[j].match(ITEM);
+          if (n && n[1].length >= base) { i = j; continue; }
+        }
+        break;
+      }
+      const indent = m[1].length;
+      if (indent < base) break;
+      if (indent > base) { const sub = list(lines, i); html = html.replace(/<\/li>$/, sub.html + '</li>'); i = sub.next; continue; }
+      html += '<li>' + inline(m[4]) + '</li>';
+      i++;
+    }
+    return { html: html + (ordered ? '</ol>' : '</ul>'), next: i };
+  }
+
+  function render(src) {
+    const lines = String(src ?? '').replace(/\r\n?/g, '\n').split('\n');
+    let out = '', i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      const fence = line.match(/^\s*```(\w*)\s*$/);
+      if (fence) { // 닫히지 않은 펜스(스트리밍 중)도 지금까지의 내용을 코드블록으로 보여준다
+        const buf = []; i++;
+        while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) buf.push(lines[i++]);
+        i++;
+        out += '<pre><code>' + esc(buf.join('\n')) + '</code></pre>'; continue;
+      }
+      if (!line.trim()) { i++; continue; }
+      if (/^\s*([-*_])\s*(\1\s*){2,}$/.test(line)) { out += '<hr>'; i++; continue; }
+      const h = line.match(/^\s*(#{1,6})\s+(.*)$/);
+      if (h) { const lv = Math.min(h[1].length + 2, 6); out += '<h' + lv + '>' + inline(h[2]) + '</h' + lv + '>'; i++; continue; }
+      if (line.includes('|') && i + 1 < lines.length && lines[i + 1].includes('|') && /^\s*\|?[\s:|-]*-[\s:|-]*$/.test(lines[i + 1])) {
+        const t = table(lines, i); out += t.html; i = t.next; continue;
+      }
+      if (/^\s*>\s?/.test(line)) {
+        const buf = [];
+        while (i < lines.length && /^\s*>\s?/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, ''));
+        out += '<blockquote>' + render(buf.join('\n')) + '</blockquote>'; continue;
+      }
+      if (ITEM.test(line)) { const l = list(lines, i); out += l.html; i = l.next; continue; }
+      const buf = [];
+      while (i < lines.length && lines[i].trim() && !ITEM.test(lines[i]) && !/^\s*(#{1,6}\s|```|>)/.test(lines[i])) buf.push(lines[i++]);
+      out += '<p>' + inline(buf.join('\n')).replace(/\n/g, '<br>') + '</p>';
+    }
+    return out;
+  }
+  return { render };
+})();
 
 async function loadHealth() {
-  try { const h = await (await fetch('/api/health/ai')).json();
-    $('#health').textContent = `${h.profile} · ${h.chatModel ?? '?'} · ${h.vectorRows} chunks · hybrid=${h.hybrid}`; } catch { $('#health').textContent = 'offline'; }
+  try {
+    const h = await (await fetch('/api/health/ai')).json();
+    $('#health').textContent = h.profile + ' · ' + (h.chatModel ?? '?') + ' · ' + h.vectorRows + ' chunks · hybrid=' + h.hybrid;
+    $('#health').title = 'index=' + h.index + ' · embedding=' + h.embeddingProvider + ' (' + h.embeddingDimensions + 'd) · table=' + h.vectorTable
+      + '\n모델 전환: --spring.profiles.active=private | public | claude';
+  } catch { $('#health').textContent = 'offline'; }
 }
 async function loadDocs() {
   const all = await (await fetch('/api/documents')).json();
   const list = all.filter(d => d.status !== 'DUPLICATE'); // 같은 파일 재업로드 기록은 목록에서 숨김(원본에 합쳐짐)
   const dup = all.length - list.length;
-  $('#docs').innerHTML = (dup ? `<div class="meta">중복 업로드 ${dup}건 숨김</div>` : '') + list.map(d => `<div class="doc">${d.filename}<span class="st ${d.status}">${d.status}</span>
-    <div class="meta">${d.chunkCount} chunks${d.elapsedMs ? ' · ' + d.elapsedMs + 'ms' : ''}${d.error ? ' · ' + d.error : ''}</div></div>`).join('');
+  $('#docs').innerHTML = (dup ? '<div class="meta">중복 업로드 ' + dup + '건 숨김</div>' : '') + list.map(d =>
+    '<div class="doc">' + esc(d.filename) + '<span class="st ' + d.status + '">' + d.status + '</span>'
+    + '<div class="meta">' + d.chunkCount + ' chunks' + (d.elapsedMs ? ' · ' + d.elapsedMs + 'ms' : '') + (d.error ? ' · ' + esc(d.error) : '') + '</div></div>').join('');
   if (all.some(d => d.status === 'QUEUED' || d.status === 'PROCESSING')) setTimeout(loadDocs, 1500);
 }
 $('#up').addEventListener('submit', async (e) => {
@@ -80,35 +228,27 @@ $('#up').addEventListener('submit', async (e) => {
   e.target.reset(); loadDocs();
 });
 
-let lastCites = [];
-function viewerUrl(c) {
-  if (!c || !c.documentId) return null;
-  const p = new URLSearchParams({ id: c.documentId });
-  if (c.chunkIndex != null) p.set('chunk', c.chunkIndex);
-  if (c.page != null) p.set('page', c.page);
-  return 'viewer.html?' + p;
-}
 function renderCites(list) {
   lastCites = list;
   $('#cites').innerHTML = list.length ? list.map((c, i) => {
     const url = viewerUrl(c);
-    const tag = url ? `<a class="cite" href="${url}" target="_blank" rel="noopener">` : '<div class="cite">';
-    return `${tag}<span class="open">${url ? '원문 열기 ↗' : ''}</span><b><span class="no">[${i + 1}]</span>${esc(c.filename)}${c.page ? ' p.' + c.page : ''}${c.chunkIndex != null ? ' · chunk ' + c.chunkIndex : ''}</b><span class="sc">score ${c.score?.toFixed(3) ?? '-'}</span><div>${esc(c.snippet)}</div>${url ? '</a>' : '</div>'}`;
+    const tag = url ? '<a class="cite" href="' + url + '" target="_blank" rel="noopener">' : '<div class="cite">';
+    return tag + '<span class="open">' + (url ? '원문 열기 ↗' : '') + '</span>'
+      + '<b><span class="no">[' + (i + 1) + ']</span>' + esc(c.filename) + (c.page ? ' p.' + c.page : '') + (c.chunkIndex != null ? ' · chunk ' + c.chunkIndex : '') + '</b>'
+      + '<span class="sc">score ' + (c.score?.toFixed(3) ?? '-') + '</span><div>' + esc(c.snippet) + '</div>'
+      + (url ? '</a>' : '</div>');
   }).join('') : '<div class="meta">근거 없음</div>';
 }
-function esc(s) { return String(s ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
-/** 답변 본문의 [출처: 2] / [출처: 1, 3] 을 뷰어 링크로 바꾼다. 스트리밍이 끝난 뒤 한 번만 호출. */
-function linkifyRefs(el) {
-  const html = esc(el.textContent).replace(/\[출처:\s*([0-9,\s]+)\]/g, (m, nums) => {
-    const links = nums.split(',').map(n => n.trim()).filter(Boolean).map(n => {
-      const c = lastCites[Number(n) - 1]; const url = viewerUrl(c);
-      return url ? `<a class="ref" href="${url}" target="_blank" rel="noopener" title="${esc(c.filename)}">${n}</a>` : n;
-    });
-    return '[출처: ' + links.join(', ') + ']';
-  });
-  el.innerHTML = html;
+
+/** 사용자 말풍선은 원문 그대로(pre-wrap), 답변 말풍선은 마크다운으로 렌더한다. */
+function addMsg(cls, text) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + cls;
+  if (cls === 'user') el.textContent = text;
+  else { const md = document.createElement('div'); md.className = 'md'; el.appendChild(md); el._md = md; }
+  $('#chat').appendChild(el); $('#chat').scrollTop = 1e9;
+  return el;
 }
-function addMsg(cls, text) { const el = document.createElement('div'); el.className = 'msg ' + cls; el.textContent = text; $('#chat').appendChild(el); $('#chat').scrollTop = 1e9; return el; }
 
 $('#ask').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -117,25 +257,52 @@ $('#ask').addEventListener('submit', async (e) => {
   addMsg('user', q);
   const bot = addMsg('bot', '');
   $('#cites').innerHTML = '';
-  const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, question: q }) });
-  const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '', ev = '';
-  while (true) {
-    const { value, done } = await reader.read(); if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let i; while ((i = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, i).trimEnd(); buf = buf.slice(i + 1);
-      if (line.startsWith('event:')) ev = line.slice(6).trim();
-      else if (line.startsWith('data:')) {
-        const data = JSON.parse(line.slice(5).trim());
-        if (ev === 'token') bot.textContent += data.text;
-        else if (ev === 'citations') renderCites(data);
-        else if (ev === 'done') { linkifyRefs(bot); const m = document.createElement('div'); m.className = 'meta'; m.textContent = `${data.profile} · ${data.model ?? ''} · ${data.elapsedMs}ms${data.promptTokens ? ' · ' + data.promptTokens + '/' + data.completionTokens + ' tok' : ''}`; bot.appendChild(m); }
-        else if (ev === 'error') bot.textContent += '\n[오류] ' + data.message;
+
+  let raw = '', pending = false;
+  // 토큰마다 전체를 다시 렌더한다. 문단·목록·표 경계는 뒤늦게 확정되므로 증분 렌더가 불가능하고,
+  // 답변 길이가 수 KB 수준이라 전체 재렌더가 더 싸다. 다만 프레임당 1회로 묶는다.
+  const paint = (done) => {
+    const chat = $('#chat');
+    const atBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 60;
+    bot._md.innerHTML = MD.render(raw) + (done ? '' : '<span class="cursor"></span>');
+    if (atBottom) chat.scrollTop = 1e9;
+  };
+  const schedule = () => { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; paint(false); }); };
+  paint(false);
+
+  try {
+    const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, question: q }) });
+    const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '', ev = '';
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trimEnd(); buf = buf.slice(i + 1);
+        if (line.startsWith('event:')) ev = line.slice(6).trim();
+        else if (line.startsWith('data:')) {
+          const data = JSON.parse(line.slice(5).trim());
+          if (ev === 'token') { raw += data.text; schedule(); }
+          else if (ev === 'citations') { renderCites(data); schedule(); }
+          else if (ev === 'error') { raw += '\n\n> **오류** ' + data.message; schedule(); }
+          else if (ev === 'done') {
+            paint(true);
+            const m = document.createElement('div'); m.className = 'meta';
+            m.textContent = data.profile + ' · ' + (data.model ?? '') + ' · ' + data.elapsedMs + 'ms'
+              + (data.promptTokens ? ' · ' + data.promptTokens + '/' + data.completionTokens + ' tok' : '');
+            bot.appendChild(m);
+          }
+        }
       }
     }
-  }
-  $('#send').disabled = false; loadHealth();
+  } finally { paint(true); $('#send').disabled = false; $('#q').focus(); loadHealth(); }
 });
+
+// 한글 입력(IME) 조합 중 Enter 는 조합 확정용이라 submit 이 안 뜨는 브라우저가 있다 → 확정된 Enter 만 제출로 처리.
+$('#q').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); $('#ask').requestSubmit(); }
+});
+
 loadHealth(); loadDocs();
 </script>
 </body>
