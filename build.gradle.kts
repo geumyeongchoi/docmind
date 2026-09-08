@@ -96,6 +96,7 @@ tasks.register<JavaExec>("eval") {
 // jib: ./gradlew jib --image=ghcr.io/<user>/docmind:<tag>   (Actions 에서 실행, 로컬은 jibDockerBuild)
 jib {
     from { image = "eclipse-temurin:21-jre" }
+    to { tags = setOf("latest") } // --image 의 태그 + latest 를 함께 push (-Djib.to.tags 는 Gradle 플러그인에서 무시됨)
     container {
         mainClass = "dev.gychoi.docmind.DocmindApplicationKt" // eval 러너 main 이 하나 더 있어 추론 불가
         ports = listOf("8080")
